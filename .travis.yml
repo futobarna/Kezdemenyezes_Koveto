@@ -1,55 +1,46 @@
 language: android
-sudo: required
-jdk: oraclejdk8
-
-before_cache:
-  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
-  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
-
-cache:
-  directories:
-    - $HOME/.gradle/caches/
-    - $HOME/.gradle/wrapper/
-
+# you MUST mention trusty https://docs.travis-ci.com/user/languages/android/
+dist: trusty
 env:
   global:
-    - ANDROID_API=24
-    - EMULATOR_API=21
-    - ANDROID_BUILD_TOOLS=24.0.2
+    # These parameters should match the parameters for build tools and sdk versions in the gradle file
+    - ANDROID_BUILD_TOOLS=29.0.3 # should match gradle
     - ADB_INSTALL_TIMEOUT=5 # minutes
-
+    - ANDROID_API=29 # api is same as gradle file
+  matrix:
+    - EMULATOR_API=21
+    - EMULATOR_API=22
 android:
   components:
     - tools
-    - platform-tools
+    - platform-tools-$ANDROID_BUILD_TOOLS
     - build-tools-$ANDROID_BUILD_TOOLS
     - android-$ANDROID_API
-    - android-$EMULATOR_API_LEVEL
+    - android-$EMULATOR_API
     - extra-google-m2repository
     - extra-android-m2repository # for design library
     - addon-google_apis-google-19 # google play services
-    - sys-img-armeabi-v7a-addon-google_apis-google-$ANDROID_API_LEVEL
-    - sys-img-armeabi-v7a-addon-google_apis-google-$EMULATOR_API_LEVEL
-
+    - sys-img-armeabi-v7a-addon-google_apis-google-$ANDROID_API
+    - sys-img-armeabi-v7a-addon-google_apis-google-$EMULATOR_API
+    - sys-img-armeabi-v7a-android-$EMULATOR_API
   licenses:
     - android-sdk-preview-license-.+
     - android-sdk-license-.+
     - google-gdk-license-.+
-
+jdk:
+  - oraclejdk8
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
 before_install:
-  - openssl aes-256-cbc -K $encrypted_c0801aa05af4_key -iv $encrypted_c0801aa05af4_iv -in example_keystore.jks.enc -out example_keystore.jks -d
-  - mkdir "$ANDROID_HOME/licenses" || true
-  - echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
-  - echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
-  - chmod +x gradlew
-  - ./gradlew dependencies || true # DON'T ADD unless you are getting "Install missing components using SDK manager"
-#Source: https://medium.com/@oldergod/constraint-layout-and-circleci-travis-d50342696d2
-
+  - yes | sdkmanager "platforms;android-$ANDROID_API"
 before_script:
-  - echo no | android create avd --force -n test -t android-21 --abi armeabi-v7a
-  - emulator -avd test -no-skin -no-audio -no-window &
-  - android-wait-for-emulator
+  - echo $TRAVIS_BRANCH
+  - echo $TRAVIS_TAG
+  - echo no | android create avd --force -n test -t android-$EMULATOR_API --abi armeabi-v7a
+  - emulator -avd test -no-audio -no-window &
+  - scripts/android-wait-for-emulator.sh
   - adb shell input keyevent 82 &
-
-script:
-  - "./gradlew clean build connectedCheck -PdisablePreDex --stacktrace"
