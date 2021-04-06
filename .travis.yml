@@ -1,2 +1,6 @@
 language: android
 dist: trusty
+android:
+  components:
+    - tools
+    - platform-tools
